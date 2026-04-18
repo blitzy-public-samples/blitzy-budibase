@@ -203,4 +203,35 @@ describe("matchers", () => {
     expect(built[0].regex.test("/api/system/status")).toBe(true)
     expect(built[0].regex.test("/api/system/status?x=y")).toBe(true)
   })
+
+  it("GHSA-8783-3wgf-jggf - Directive 4 — bare public-endpoint prefix matches sub-paths while rejecting suffix collisions", () => {
+    // The anchored regex MUST match legitimate sub-routes of a bare
+    // public-endpoint allowlist entry. For example, the worker's
+    // PUBLIC_ENDPOINTS allowlist declares `/api/global/configs/public` and
+    // relies on the matcher to grant anonymous access to
+    // `/api/global/configs/public/oidc`,
+    // `/api/global/configs/public/translations`, etc. Simultaneously, the
+    // regex MUST reject suffix-collision attacks such as
+    // `/api/systemic-takeover` against pattern `/api/system`. This test
+    // locks in both properties.
+    const pattern = [
+      {
+        route: "/api/system",
+        method: "GET",
+      },
+    ]
+
+    const built = matchers.buildMatcherRegex(pattern)
+
+    // Positive — Directive 4: legitimate sub-routes must prefix-match
+    expect(built[0].regex.test("/api/system")).toBe(true)
+    expect(built[0].regex.test("/api/system/status")).toBe(true)
+    expect(built[0].regex.test("/api/system/environment")).toBe(true)
+    expect(built[0].regex.test("/api/system/status?x=y")).toBe(true)
+
+    // Negative — GHSA security: suffix-collision attacks must NOT match
+    expect(built[0].regex.test("/api/systemic-takeover")).toBe(false)
+    expect(built[0].regex.test("/api/systems")).toBe(false)
+    expect(built[0].regex.test("/api/system-admin")).toBe(false)
+  })
 })
