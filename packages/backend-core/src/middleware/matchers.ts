@@ -23,7 +23,7 @@ export const buildMatcherRegex = (
       }
     }
 
-    return { regex: new RegExp(`^${route}`), method, route }
+    return { regex: new RegExp(`^${route}(\\?|$)`), method, route }
   })
 }
 

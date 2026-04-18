@@ -22,7 +22,7 @@ describe("matchers", () => {
   it("wildcards path", () => {
     const pattern = [
       {
-        route: "/api/tests",
+        route: "/api/tests/:testId",
         method: "POST",
       },
     ]
@@ -136,5 +136,71 @@ describe("matchers", () => {
     const built = matchers.buildMatcherRegex(pattern)
 
     expect(!!matchers.matches(ctx, built)).toBe(true)
+  })
+
+  it("GHSA-8783-3wgf-jggf - protected route without matching public pattern returns no match", () => {
+    const pattern = [
+      {
+        route: "/api/system/status",
+        method: "GET",
+      },
+    ]
+    const ctx = structures.koa.newContext()
+    ctx.path = "/api/global/users/search"
+    ctx.request.url = "/api/global/users/search"
+    ctx.request.method = "POST"
+
+    const built = matchers.buildMatcherRegex(pattern)
+
+    expect(matchers.matches(ctx, built)).toBeFalsy()
+  })
+
+  it("GHSA-8783-3wgf-jggf - protected route with public pattern in query string returns no match", () => {
+    const pattern = [
+      {
+        route: "/api/system/status",
+        method: "GET",
+      },
+    ]
+    const ctx = structures.koa.newContext()
+    ctx.path = "/api/global/users/search"
+    ctx.request.url = "/api/global/users/search?x=/api/system/status"
+    ctx.request.method = "POST"
+
+    const built = matchers.buildMatcherRegex(pattern)
+
+    expect(matchers.matches(ctx, built)).toBeFalsy()
+  })
+
+  it("GHSA-8783-3wgf-jggf - actual public path returns match", () => {
+    const pattern = [
+      {
+        route: "/api/system/status",
+        method: "GET",
+      },
+    ]
+    const ctx = structures.koa.newContext()
+    ctx.path = "/api/system/status"
+    ctx.request.url = "/api/system/status"
+    ctx.request.method = "GET"
+
+    const built = matchers.buildMatcherRegex(pattern)
+
+    expect(matchers.matches(ctx, built)).toBeTruthy()
+  })
+
+  it("GHSA-8783-3wgf-jggf - anchored regex rejects path-suffix collisions", () => {
+    const pattern = [
+      {
+        route: "/api/system/status",
+        method: "GET",
+      },
+    ]
+
+    const built = matchers.buildMatcherRegex(pattern)
+
+    expect(built[0].regex.test("/api/system/status-extended")).toBe(false)
+    expect(built[0].regex.test("/api/system/status")).toBe(true)
+    expect(built[0].regex.test("/api/system/status?x=y")).toBe(true)
   })
 })
