@@ -34,6 +34,18 @@ const PUBLIC_ENDPOINTS = [
     method: "GET",
   },
   {
+    // Companion to the `/api/global/configs/public` entry above: the
+    // anchored-regex fix for GHSA-8783-3wgf-jggf in
+    // `packages/backend-core/src/middleware/matchers.ts` caused the
+    // bare `/public` pattern to match only `/api/global/configs/public`
+    // exactly, breaking public access to sub-routes such as
+    // `/public/oidc` and `/public/translations`. The :subPath wildcard
+    // parameter compiles (via PARAM_REGEX) to `/.*`, restoring the
+    // original prefix-matching intent captured by the comment above.
+    route: "/api/global/configs/public/:subPath",
+    method: "GET",
+  },
+  {
     route: "/api/global/configs/checklist",
     method: "GET",
   },
@@ -67,6 +79,20 @@ const PUBLIC_ENDPOINTS = [
     route: "/api/global/users/invite",
     method: "GET",
   },
+  {
+    // Companion to the `/api/global/users/invite` entry above: the
+    // anchored-regex fix for GHSA-8783-3wgf-jggf in
+    // `packages/backend-core/src/middleware/matchers.ts` caused the
+    // bare `/invite` pattern to match only `/api/global/users/invite`
+    // exactly, breaking the unauthenticated invite verification
+    // endpoint `GET /api/global/users/invite/:code` (handled by
+    // `controller.checkInvite`) which email recipients hit when
+    // opening an invite link before creating their password. The
+    // :code wildcard parameter compiles (via PARAM_REGEX) to `/.*`,
+    // restoring the original prefix-matching intent.
+    route: "/api/global/users/invite/:code",
+    method: "GET",
+  },
 ]
 
 const ALLOW_INACTIVE_TENANT_ENDPOINTS = [
@@ -78,8 +104,16 @@ const ALLOW_INACTIVE_TENANT_ENDPOINTS = [
 
 const NO_TENANCY_ENDPOINTS = [
   // system endpoints are not specific to any tenant
+  // NOTE: :subPath is a wildcard parameter required so buildMatcherRegex
+  // produces a prefix-matching regex (`^/api/system/.*(\?|$)`) for all
+  // `/api/system/*` sub-routes (status, environment, accounts/:id/metadata,
+  // logs, tenants/:id, restored). Without the :subPath parameter, the
+  // anchored-regex fix for GHSA-8783-3wgf-jggf in
+  // `packages/backend-core/src/middleware/matchers.ts` would cause this
+  // entry to match only the exact path `/api/system`, breaking tenancy
+  // bypass for every registered sub-route.
   {
-    route: "/api/system",
+    route: "/api/system/:subPath",
     method: "ALL",
   },
   // tenant is determined in request body
